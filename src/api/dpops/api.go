@@ -93,3 +93,74 @@ func AddNewVideo(aid int, name string) (*defs.VideoInfo, error) {
 	return res, nil
 
 }
+
+//GetVideoInfo 查找视频
+func GetVideoInfo(vid string) (*defs.VideoInfo, error) {
+	stmtOut, err := dbconn.Prepare("SELECT author_id,name,display_ctime FROM video_info WHERE id=?")
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		aid  int
+		dct  string
+		name string
+	)
+
+	err = stmtOut.QueryRow(vid).Scan(&aid, &name, &dct)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	res := &defs.VideoInfo{
+		ID:           vid,
+		AuthorID:     aid,
+		Name:         name,
+		DisplayCtime: dct,
+	}
+
+	return res, nil
+}
+
+//DeleteVideoInfo 删除视频
+func DeleteVideoInfo(vid string) error {
+	stmtDel, err := dbconn.Prepare("DELETE FROM video_info WHERE id=?")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmtDel.Exec(vid)
+	if err != nil {
+		return err
+	}
+
+	defer stmtDel.Close()
+	return nil
+}
+
+//AddNewComments 新增评论
+func AddNewComments(vid string, aid int, content string) error {
+	id, err := utils.NewUUID()
+	if err != nil {
+		log.Printf("utils.NewUUID err=%v", err)
+		return err
+	}
+
+	stmtIns, errStmt := dbconn.Prepare("INSERT INTO comment (id,video_id,author_id,content) VALUES(?,?,?,?)")
+	if errStmt != nil {
+		log.Printf("dbconn.Prepare err=%v", err)
+		return err
+	}
+
+	_, errExec := stmtIns.Exec(id, vid, aid, content)
+	if errExec != nil {
+		return err
+	}
+
+	defer stmtIns.Close()
+	return nil
+}
